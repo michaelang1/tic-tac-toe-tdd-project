@@ -31,7 +31,18 @@ class ComputerPlayer {
 		let symbolOther = 'O';
 		if (symbol === 'O') symbolOther = 'X';
 
-		// test current symbol first then opponent's
+		// check if ai is making the first move, put it in the corner
+		let countEmpty = 0;
+		for (const row of grid) {
+			for (const el of row) {
+				if (el === ' ') countEmpty++;
+			}
+		}
+		if (countEmpty === 9) {
+			return { row: 0, col: 0 };
+		}
+
+		// test ai's symbol first then opponent's
 		for (const each of [symbol, symbolOther]) {
 			// check each valid move
 			for (let i = 0; i < validMoves.length; i++) {
