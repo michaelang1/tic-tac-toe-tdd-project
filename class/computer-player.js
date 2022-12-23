@@ -21,40 +21,20 @@ class ComputerPlayer {
 		return validMoves[randomIndex];
 	}
 
-	static getWinningMoves(grid, symbol, symbolOther) {
-		let validMoves = this.getValidMoves(grid);
-
-		// if 1st to go, put it in the corner
-		if (validMoves.length === 9) {
-			return { row: 2, col: 2 };
-		}
-
-		// if 2nd to go or 2nd round, try to place move in middle, if can't, place across 1st move
-		if (validMoves.length === 8 || validMoves.length === 7) {
-			if (grid[1][1] === ' ') return { row: 1, col: 1 };
-			if (grid[1][1] === symbolOther) return { row: 0, col: 0 };
-		}
-	}
-
-	static getSmartMove(grid, symbol) {
+	static getWinningMoves(grid, symbol) {
 		// ! HA: why does this import have to be inside of this method, not in the global space?
 		const TTT = require('./ttt');
 
-		let validMoves = this.getValidMoves(grid);
-
+		// test current player first and then opponent to see if there is
+		// an immediate win, if yes, choose that move for the current player
 		let symbolOther = 'O';
 		if (symbol === 'O') symbolOther = 'X';
 
-		// check winning moves first
-		let winningMove = this.getWinningMoves(grid, symbol, symbolOther);
-		if (winningMove !== undefined) return winningMove;
+		let validMoves = this.getValidMoves(grid);
 
-		// get smart moves
-		// test current symbol first and then opponent's
 		for (const each of [symbol, symbolOther]) {
 			// check each valid move
-			for (let i = 0; i < validMoves.length; i++) {
-				let move = validMoves[i];
+			for (const move of validMoves) {
 				grid[move.row][move.col] = each;
 
 				if (TTT.checkWin(grid) === each) {
@@ -62,20 +42,110 @@ class ComputerPlayer {
 					return move;
 				}
 
+				// revert back the board
 				grid[move.row][move.col] = ' ';
 			}
 		}
+	}
 
-		// try to put in corners
-		if (grid[0][0] === ' ') return { row: 0, col: 0 };
-		if (grid[2][2] === ' ') return { row: 2, col: 2 };
-		if (grid[0][2] === ' ') return { row: 0, col: 2 };
-		if (grid[2][0] === ' ') return { row: 2, col: 0 };
+	static getSmartMove(grid, symbol) {
+		// first check if there is a winning move:
+		// Minimax has trouble finding the immediate winning or winning-blocking
+		// move if when both parties play intelligently
+		// the game's ending has been fixed
+		let winningMove = this.getWinningMoves(grid, symbol);
+		if (winningMove) return winningMove;
 
-		// try to put in middle
-		if (grid[1][1] === ' ') return { row: 1, col: 1 };
+		// run minimax program
+		if (symbol === 'X') {
+			return this.maxValue(grid, 'X', 'O').bestMove;
+		} else {
+			return this.minValue(grid, 'O', 'X').bestMove;
+		}
+	}
 
-		return ComputerPlayer.randomMove(grid);
+	static maxValue(grid, currSymbol, nextSymbol, LowerPruneLimit) {
+		// ! HA: why does this import have to be inside of this method, not in the global space?
+		const TTT = require('./ttt');
+
+		// if game ends, return end result (winner or tie), base case
+		let winner = TTT.checkWin(grid);
+		if (winner === 'X') {
+			return { v: 1 };
+		} else if (winner === 'O') {
+			return { v: -1 };
+		} else if (winner === 'T') {
+			return { v: 0 };
+		}
+
+		let v = -100000;
+		let bestMove;
+		let validMoves = this.getValidMoves(grid);
+
+		// test each move
+		for (const move of validMoves) {
+			// deep copy the current grid so as to not modify it
+			let gridTrial = grid.map(row => row.map(el => el));
+			// place the move
+			gridTrial[move.row][move.col] = currSymbol;
+
+			// get the max of the min value of the new grid, and the associated move
+			let v2 = this.minValue(gridTrial, nextSymbol, currSymbol, v).v;
+
+			// Alpha-beta pruning
+			// stops current loop, drops the rest of the sub-nodes,
+			// and moves onto the next node
+			if (v2 >= LowerPruneLimit) {
+				v = v2;
+				break;
+			} else if (v2 > v) {
+				v = v2;
+				bestMove = move;
+			}
+		}
+		return { v: v, bestMove: bestMove };
+	}
+
+	static minValue(grid, currSymbol, nextSymbol, UpperPruneLimit) {
+		// ! HA: why does this import have to be inside of this method, not in the global space?
+		const TTT = require('./ttt');
+
+		// if game ends, return end result (winner or tie), base case
+		let winner = TTT.checkWin(grid);
+		if (winner === 'X') {
+			return { v: 1 };
+		} else if (winner === 'O') {
+			return { v: -1 };
+		} else if (winner === 'T') {
+			return { v: 0 };
+		}
+
+		let v = 100000;
+		let bestMove;
+		let validMoves = this.getValidMoves(grid);
+
+		// test each move
+		for (const move of validMoves) {
+			// deep copy the current grid so as to not modify it
+			let gridTrial = grid.map(row => row.map(el => el));
+			// place the move
+			gridTrial[move.row][move.col] = currSymbol;
+
+			// get the min of the max value of the new grid, and the associated move
+			let v2 = this.maxValue(gridTrial, nextSymbol, currSymbol, v).v;
+
+			// Alpha-beta pruning
+			// stops current loop, drops the rest of the sub-nodes,
+			// and moves onto the next node
+			if (v2 <= UpperPruneLimit) {
+				v = v2;
+				break;
+			} else if (v2 < v) {
+				v = v2;
+				bestMove = move;
+			}
+		}
+		return { v: v, bestMove: bestMove };
 	}
 }
 

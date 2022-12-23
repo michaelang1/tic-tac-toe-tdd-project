@@ -1,5 +1,4 @@
 const { expect } = require('chai');
-
 const ComputerPlayer = require('../class/computer-player');
 const TTT = require('../class/ttt');
 
@@ -83,12 +82,14 @@ describe('ComputerPlayer', function () {
 	});
 
 	it('can correctly block when there is an opposing win possible', function () {
+		// HA note: this grid is already a loss for 'X'
+		// so long as 'O' plays intelligently.
+		// Therefore Minimax has trouble finding the correct move {2, 2} here.
 		grid = [
 			['X', ' ', ' '],
 			['X', ' ', ' '],
 			['O', 'O', ' '],
 		];
-
 		let smartMove = ComputerPlayer.getSmartMove(grid, 'X');
 
 		expect(smartMove).to.deep.equal({ row: 2, col: 2 });
@@ -107,6 +108,9 @@ describe('ComputerPlayer', function () {
 	});
 
 	it('will block traps', function () {
+		// both {0, 2} and {2, 1} are winning moves for 'X'.
+		// Minimax will pick the first instead of the second which happens to
+		// be a faster win.
 		grid = [
 			['O', 'X', ' '],
 			[' ', 'X', ' '],
@@ -118,11 +122,13 @@ describe('ComputerPlayer', function () {
 		expect(smartMove).to.deep.equal({ row: 2, col: 1 });
 	});
 
-	it('can play 1000 games without losing', function () {
-		let losses = 0;
-		let wins = 0;
-		let ties = 0;
-		for (let i = 0; i < 1000; i++) {
+	let losses = 0;
+	let wins = 0;
+	let ties = 0;
+
+	// set to 20 times max each time to avoid time out issues
+	for (let i = 0; i < 50; i++) {
+		for (let i = 0; i < 20; i++) {
 			grid = [
 				[' ', ' ', ' '],
 				[' ', ' ', ' '],
@@ -154,10 +160,17 @@ describe('ComputerPlayer', function () {
 				console.log(grid[0]);
 				console.log(grid[1]);
 				console.log(grid[2]);
-			} else if (TTT.checkWin(grid) === 'X') wins++;
-			else ties++;
+			} else if (TTT.checkWin(grid) === 'X') {
+				wins++;
+			} else ties++;
 		}
 
+		console.log(
+			`AI losses = ${losses}, AI wins = ${wins}, Ties = ${ties}.`
+		);
+	}
+
+	it('can play 1000 games without losing', function () {
 		expect(losses).to.equal(0);
 	});
 });
